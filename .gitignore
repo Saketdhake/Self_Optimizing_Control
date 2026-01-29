@@ -16,3 +16,5 @@ env/
 # Jupyter
 .ipynb_checkpoints/
 
+# Sphinx build output
+docs/_build/
