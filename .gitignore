@@ -18,3 +18,5 @@ env/
 
 # Sphinx build output
 docs/_build/
+# MyST build outputs
+_build
