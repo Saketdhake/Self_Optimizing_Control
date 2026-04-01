@@ -1,5 +1,7 @@
 # SOCF — Self-Optimizing Control Framework
 
+![PyPI Downloads](https://static.pepy.tech/badge/opyrability)](https://pepy.tech/projects/opyrability)
+[GitHub forks](https://img.shields.io/github/forks/codes-group/opyrability)
 ![GitHub License](https://img.shields.io/github/license/Saketdhake/Self_Optimizing_Control)
 ![GitHub Repo stars](https://img.shields.io/github/stars/Saketdhake/Self_Optimizing_Control)
 
