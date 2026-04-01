@@ -1,0 +1,14 @@
+
+format: jb-book
+root: intro
+
+chapters:
+  - file: installation
+  - file: theory/SOC_overview
+    sections:
+      - file: theory/loss_and_cv_selection
+  - file: api
+  - file: examples/index
+    sections:
+      - file: examples/cstr_quickstart
+      - file: examples/solver_notes

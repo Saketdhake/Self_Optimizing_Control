@@ -1,0 +1,42 @@
+
+title: Self-Optimizing Control Framework (SOCF)
+author: Saket Dhake
+copyright: "2024-2026"
+# logo: _static/logo.png  # Uncomment if you add a logo
+
+execute:
+  execute_notebooks: "off"
+
+# Bibliography
+bibtex_bibfiles:
+  - references.bib
+
+# Repository info
+repository:
+  url: https://github.com/Saketdhake/Self_Optimizing_Control
+  branch: main
+  path_to_book: docs
+
+# GitHub buttons
+html:
+  use_issues_button: true
+  use_repository_button: true
+  use_edit_page_button: true
+  home_page_in_navbar: true
+
+# Launch buttons for Colab
+launch_buttons:
+  notebook_interface: "classic"
+  colab_url: "https://colab.research.google.com"
+
+# Sphinx extensions
+sphinx:
+  extra_extensions:
+    - sphinx.ext.autodoc
+    - sphinx.ext.napoleon
+    - sphinx.ext.viewcode
+    - sphinx.ext.mathjax
+  config:
+    add_module_names: false
+    # This lets autodoc find your 'socf' package
+    # Assumes `pip install -e .` was run from repo root
