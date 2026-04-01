@@ -68,4 +68,3 @@ See the [Installation guide](https://saketdhake.github.io/Self_Optimizing_Contro
 
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
