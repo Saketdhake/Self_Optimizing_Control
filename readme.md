@@ -1,9 +1,10 @@
 # SOCF — Self-Optimizing Control Framework
 
 
-[GitHub forks](https://img.shields.io/github/forks/Saketdhake/Self_Optimizing_Contro)
+[![GitHub forks](https://img.shields.io/github/forks/Saketdhake/Self_Optimizing_Contro)
 ![GitHub License](https://img.shields.io/github/license/Saketdhake/Self_Optimizing_Control)
 ![GitHub Repo stars](https://img.shields.io/github/stars/Saketdhake/Self_Optimizing_Control)
+![GitHub License](https://img.shields.io/github/license/Saketdhake/Self_Optimizing_Contro)]
 
 A Python package for **Self-Optimizing Control (SOC)** analysis built on [Pyomo](https://www.pyomo.org/) and solved with [IPOPT](https://coin-or.github.io/Ipopt/).
 
