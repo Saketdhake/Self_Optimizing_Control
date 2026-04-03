@@ -545,6 +545,102 @@ def _build_raw_loss_matrix(
 
     return loss_matrix
 
+def _build_impl_error_loss_row(
+    build_model: Callable[[], pyo.ConcreteModel],
+    user_designs: Dict[str, Callable[[pyo.ConcreteModel], None]],
+    impl_error_designs: Dict[str, Callable[[pyo.ConcreteModel], None]],
+    nominal: dict,
+    J_nom: float,
+    solver,
+    tee: bool = False,
+) -> pd.Series:
+    """
+    Compute the implementation-error loss row for each design.
+
+    For implementation error evaluation, the disturbances are kept at their
+    nominal values but the controlled variable setpoint is perturbed by a
+    known measurement/implementation error dc. This corresponds to disturbance
+    "dc" in Skogestad's SOC procedure (Step 5/6).
+
+    The user provides `impl_error_designs`, a dict with the same keys as
+    `user_designs`, but each apply_design function fixes/constrains the CV
+    at its *perturbed* value (cs + dc) rather than the nominal optimal value.
+
+    For example, if the nominal design is "M=1.0" (fixing M at 1.0), the
+    implementation error design would be "M=1.1" (fixing M at 1.0 + 0.1).
+
+    Parameters
+    ----------
+    build_model:
+        Callable returning a fresh Pyomo model.
+    user_designs:
+        Dict mapping design label -> apply_design function (nominal setpoints).
+        Used only for the column labels.
+    impl_error_designs:
+        Dict mapping the SAME design labels -> apply_design function with the
+        perturbed setpoint (cs + dc). Must have the same keys as `user_designs`.
+    nominal:
+        The nominal scenario dict (disturbance parameter values at nominal).
+    J_nom:
+        The base optimal objective value at the nominal scenario.
+    solver:
+        A configured Pyomo solver object.
+    tee:
+        If True, prints solver output.
+
+    Returns
+    -------
+    row:
+        pd.Series with index = "Loss with <design label>" for each design,
+        and values = numeric loss or "infeasible".
+
+    Raises
+    ------
+    KeyError
+        If `impl_error_designs` does not contain a key present in `user_designs`.
+    """
+    col_labels = [f"Loss with {lbl}" for lbl in user_designs]
+    row = pd.Series(index=col_labels, dtype=object)
+
+    for dlabel in user_designs:
+        if dlabel not in impl_error_designs:
+            raise KeyError(
+                f"impl_error_designs is missing key '{dlabel}'. "
+                f"It must have the same keys as user_designs."
+            )
+
+        apply_design = impl_error_designs[dlabel]
+
+        m = build_model()
+        apply_design(m)
+
+        active_objs = list(m.component_data_objects(Objective, active=True))
+        if len(active_objs) != 1:
+            raise ValueError(
+                f"Model must have exactly 1 active Objective, found {len(active_objs)}."
+            )
+        obj = active_objs[0]
+
+        # Set disturbances to nominal values
+        for p, val in nominal.items():
+            if not hasattr(m, p):
+                raise AttributeError(f"Model has no component named '{p}'.")
+            getattr(m, p).set_value(val)
+
+        results = solver.solve(m, tee=tee)
+        tc = results.solver.termination_condition
+
+        if not _is_good_termination(tc):
+            loss = "infeasible"
+        else:
+            J_opt = value(obj.expr)
+            loss_val = (J_opt - J_nom) if obj.is_minimizing() else (J_nom - J_opt)
+            loss = round(float(loss_val), 2)
+
+        row[f"Loss with {dlabel}"] = loss
+
+    return row
+
 
 def _mark_infeasible_designs(
     loss_matrix: pd.DataFrame,
@@ -674,6 +770,7 @@ def run_self_optimizing_model(
     parallel: bool = False,
     n_workers=None,
     mark_negative_loss_infeasible=False,
+    impl_error_designs: Optional[Dict[str, Callable]] = None,
     tee: bool = False,
 ):
     """
@@ -724,6 +821,18 @@ def run_self_optimizing_model(
         Number of worker processes (only used when parallel=True).
     mark_negative_loss_infeasible:
         If True, treat negative numeric losses as infeasible during labeling.
+    impl_error_designs:
+        Optional dict mapping the SAME design labels as `user_designs` to
+        apply_design functions that fix/constrain the CV at the *perturbed*
+        setpoint (cs + dc). When provided, an additional "Impl. error (dc)"
+        row is appended to the loss matrix.
+
+        Example: if user_designs has "M=1.0" (fixing M at 1.0) and dc for M
+        is 10% (i.e. 0.1), then impl_error_designs should have "M=1.0" mapped
+        to a function that fixes M at 1.1.
+
+        The implementation error loss is evaluated at the nominal disturbance
+        scenario and is included in the average loss and ranking calculations.
     tee:
         If True, prints solver output (useful for debugging, noisy for large runs).
 
@@ -758,7 +867,7 @@ def run_self_optimizing_model(
     J_list = _solve_base_objectives(build_model, combos, solver, tee=tee)
     results_df = _evaluate_metrics(build_model, metrics, combos, scenario_names, solver, tee=tee)
 
-    # Loss matrix for each design
+    # Loss matrix for each design (disturbance scenarios)
     loss_matrix = _build_raw_loss_matrix(
         build_model=build_model,
         user_designs=user_designs,
@@ -771,7 +880,23 @@ def run_self_optimizing_model(
         tee=tee,
     )
 
-    
+    # Implementation error row (optional)
+    if impl_error_designs is not None:
+        # J_nom for the nominal scenario is J_list[0] (first combo is always nominal)
+        J_nom_nominal = J_list[0]
+
+        impl_row = _build_impl_error_loss_row(
+            build_model=build_model,
+            user_designs=user_designs,
+            impl_error_designs=impl_error_designs,
+            nominal=nominal,
+            J_nom=J_nom_nominal,
+            solver=solver,
+            tee=tee,
+        )
+
+        loss_matrix.loc["Impl. error (dc)"] = impl_row
+
     # Normalize infeasible labels + ranking
     loss_matrix = _mark_infeasible_designs(loss_matrix, mark_negative=mark_negative_loss_infeasible)
     loss_matrix = _append_average_and_ranking(loss_matrix)
